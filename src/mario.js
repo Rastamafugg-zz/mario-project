@@ -1,4 +1,3 @@
-// import Config from "./config"
 import { Animation, Assets, Direction, Item, Physics } from "./config"
 // import Phaser from "phaser"
 const Mario = function(game, startLocation) {
@@ -30,16 +29,18 @@ const Mario = function(game, startLocation) {
   mario.body.onWorldBounds = new Phaser.Signal();
   mario.body.onWorldBounds.add(function(sprite, up, down, left, right) {
     if (down && !mario.state.isDead) {
-      game.camera.fade(0x000000, Phaser.Timer.Quarter, false);
-      mario.state.isDead = true;
-      mario.collideWorldBounds = false;
-      game.time.events.add(Phaser.Timer.HALF, function() {
-        game.camera.flash(0x000000, Phaser.Timer.Quarter, false);
-        mario.x = mario.state.startLocation.x;
-        mario.y = mario.state.startLocation.y;
-        mario.state.isDead = false;
-        mario.collideWorldBounds = true;
-      }, this);
+      if (down && !mario.state.isDead) {
+        game.camera.onFadeComplete.addOnce(() => {
+          game.camera.flash(0x000000, Phaser.Timer.QUARTER, false);
+          mario.x = mario.state.startLocation.x;
+          mario.y = mario.state.startLocation.y;
+          mario.state.isDead = false;
+          mario.collideWorldBounds = true;
+        });
+        game.camera.fade(0x000000, Phaser.Timer.QUARTER, false);
+        mario.state.isDead = true;
+        mario.collideWorldBounds = false;
+      }
     }
   });
   mario.body.fixedRotation = true;
@@ -128,10 +129,10 @@ const Mario = function(game, startLocation) {
     item: Item.NONE,
     startLocation,
     processControls: () => {
-      this.doNothing = true;
+      mario.state.doNothing = true;
       if (cursors.down.isDown) {
         if (mario.body.onFloor() || mario.body.touching.down) {
-          if (this.item === Item.MUSHROOM || this.item === Item.FLOWER) {
+          if (mario.state.item === Item.MUSHROOM || mario.state.item === Item.FLOWER) {
             mario.animations.play(Animation.Mario.CROUCH);
           } else {
             mario.animations.play(Animation.Mario.WAIT);
@@ -142,29 +143,29 @@ const Mario = function(game, startLocation) {
             mario.body.velocity.x += Physics.Mario.ACCELERATION;
           }
         }
-        this.doNothing = false;
+        mario.state.doNothing = false;
       } else if (cursors.left.isDown) {
         processLeftRight(Direction.LEFT);
       } else if (cursors.right.isDown) {
         processLeftRight(Direction.RIGHT);
       }
       if (cursors.up.isDown) {
-        if (cursors.up.justDown && !this.isJumping) {
+        if (cursors.up.justDown && !mario.state.isJumping) {
           if (mario.body.onFloor() || mario.body.touching.down) {
             // debugger
             mario.body.velocity.y = Physics.Mario.MIN_JUMP;
             mario.animations.play(Animation.Mario.JUMP);
             game.time.events.add(Physics.Mario.JUMP_TIME, function() {
-              this.stopJumping = true;
-            }, this);
-            this.stopJumping = false;
-            this.isJumping = true;
+              mario.state.stopJumping = true;
+            }, mario.state);
+            mario.state.stopJumping = false;
+            mario.state.isJumping = true;
           }
         } else {
-          if (this.stopJumping) {
+          if (mario.state.stopJumping) {
             mario.body.gravity.y = 0;
-            if (this.isJumping) {
-              this.isJumping = false;
+            if (mario.state.isJumping) {
+              mario.state.isJumping = false;
             }
           } else {
             // debugger;
@@ -174,17 +175,17 @@ const Mario = function(game, startLocation) {
         }
       } else {
         mario.body.gravity.y = 0;
-        if (this.isJumping) {
-          this.isJumping = false;
-          if (!this.stopJumping) {
-            this.stopJumping = true;
+        if (mario.state.isJumping) {
+          mario.state.isJumping = false;
+          if (!mario.state.stopJumping) {
+            mario.state.stopJumping = true;
           }
         }
       }
-      if (shootButton.justDown && this.item === Item.FLOWER) {
+      if (shootButton.justDown && mario.state.item === Item.FLOWER) {
         mario.animations.play(Animation.Mario.SHOOT);
-        this.doNothing = false;
-        let fireball = game.add.sprite((this.direction === Direction.RIGHT) ? mario.right : mario.left - 8, mario.top + mario.body.halfHeight, Animation.Level.FIREBALL);
+        mario.state.doNothing = false;
+        let fireball = game.add.sprite((mario.state.direction === Direction.RIGHT) ? mario.right : mario.left - 8, mario.top + mario.body.halfHeight, Animation.Level.FIREBALL);
         fireball.animations.add(Animation.Level.FIREBALL, [0, 1, 2, 3], 4, true);
         fireball.animations.play(Animation.Level.FIREBALL);
         fireball.autoCull = true;
@@ -194,11 +195,11 @@ const Mario = function(game, startLocation) {
         fireball.body.bounce.y = 1;
         fireball.body.bounce.x = 1;
         fireball.body.collideWorldBounds = true;
-        fireball.body.velocity.x = (this.direction === Direction.RIGHT) ? 200 : -200;
+        fireball.body.velocity.x = (mario.state.direction === Direction.RIGHT) ? 200 : -200;
         fireball.body.velocity.y = 0;
         items.add(fireball);
       }
-      if (this.doNothing) {
+      if (mario.state.doNothing) {
         if (mario.body.velocity.x > 10) {
           mario.body.velocity.x -= 10;
         } else if (mario.body.velocity.x < -10) {
@@ -247,14 +248,14 @@ const Mario = function(game, startLocation) {
 
         mario.state.item = Item.MUSHROOM;
         mario.state.isInvincible = true;
-        game.time.events.add(Phaser.Timer.HALF, () => mario.state.isInvicible = false, this);
+        game.time.events.add(Phaser.Timer.HALF, () => mario.state.isInvicible = false, mario.state);
       } else if (mario.state.item === Item.MUSHROOM) {
         mario.loadTexture(Assets.SpriteSheets.MARIO_SMALL);
         mario.body.setSize(16, 16);
         mario.y = mario.y + 16;
         mario.state.item = Item.NONE;
         mario.state.isInvincible = true;
-        game.time.events.add(Phaser.Timer.HALF, () => mario.state.isInvicible = false, this);
+        game.time.events.add(Phaser.Timer.HALF, () => mario.state.isInvicible = false, mario.state);
       } else {
         game.camera.fade(0x000000, Phaser.Timer.Quarter, false);
         mario.state.isDead = true;
@@ -265,7 +266,7 @@ const Mario = function(game, startLocation) {
           mario.y = mario.state.startLocation.y;
           mario.state.isDead = false;
           mario.collideWorldBounds = true;
-        }, this);
+        }, mario.state);
       }
     }
   };

@@ -74,7 +74,7 @@
     RIGHT: "right"
   };
   const MarioState = function(sprite, cursors, shootButton, runButton) {
-    let processLeftRight = function(newDirection) {
+    let processLeftRight = function(state, newDirection) {
       let onGround = sprite.body.onFloor() || sprite.body.touching.down;
       let xVelocity = sprite.body.velocity.x;
       let currentAnimation = sprite.animations.currentAnim.name;
@@ -156,9 +156,9 @@
           }
           this.doNothing = false;
         } else if (cursors.left.isDown) {
-          processLeftRight(Direction.LEFT);
+          processLeftRight(this, Direction.LEFT);
         } else if (cursors.right.isDown) {
-          processLeftRight(Direction.RIGHT);
+          processLeftRight(this, Direction.RIGHT);
         }
         if (cursors.up.isDown) {
           if (cursors.up.justDown && !this.isJumping) {
