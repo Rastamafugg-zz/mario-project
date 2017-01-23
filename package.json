@@ -17,7 +17,8 @@
     "javascript",
     "phaser",
     "game",
-    "engine"
+    "engine",
+    "web browser"
   ],
   "author": "Jason Ross",
   "license": "ISC",
